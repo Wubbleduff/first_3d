@@ -5,3 +5,7 @@ Lots of organizing data and text transformation. I've grouped meshes so now
 it's very easy to create a mesh from a handmade model or loaded from an obj
 file. Got from showing a wizard-hat-textured quad to a full 3D diffuse lit
 wizard hat. Also implemented a first person camera.
+
+7/25/2019
+4 hours
+Cleaning up shader code and creating a second shader for a textured quad.
