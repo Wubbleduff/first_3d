@@ -48,7 +48,6 @@ struct Shader
   ID3D11VertexShader *vertex_shader;
   ID3D11PixelShader *pixel_shader;
   ID3D11InputLayout *layout;
-  ID3D11Buffer *matrix_buffer;
 };
 
 // Textures
@@ -250,13 +249,14 @@ struct Mesh
 
 struct Model
 {
-  v3 position;
-  v3 scale;
+  v3 position = v3();
+  v3 scale = v3(1.0f, 1.0f, 1.0f);
 
   // In degrees
-  float y_axis_rotation;
+  float y_axis_rotation = 0.0f;
 
-  Mesh *mesh;
+  Mesh *mesh = 0;
+  Shader *shader = 0;
 };
 
 struct Camera
@@ -274,7 +274,11 @@ struct RendererData
   Window window;
   D3DResources resources;
 
-  Shader first_shader;
+  Shader diffuse_shader;
+  Shader quad_shader;
+  
+  // Gobal matrix buffer for now. See TODO about this in the shader creation code.
+  ID3D11Buffer *first_matrix_buffer;
 
   Texture wizard_hat;
 
@@ -325,7 +329,7 @@ static void set_shader_paramters(ID3D11DeviceContext *device_context, ID3D11Buff
   device_context->PSSetShaderResources(0, 1, &texture);
 }
 
-static void outputShaderErrorMessage(ID3D10Blob *error_message, HWND hwnd, const s8 *shader_file)
+static void output_shader_errors(ID3D10Blob *error_message, HWND hwnd, const s8 *shader_file)
 {
   s8 *compile_errors;
   u32 buffer_size;
@@ -640,144 +644,7 @@ void init_renderer(HWND window, u32 in_framebuffer_width, u32 in_framebuffer_hei
   aspect_ratio = (f32)framebuffer_width / (f32)framebuffer_height;
 
 
-
-
-
-
-
-  // Shaders
-
-  {
-    ID3D10Blob *error_message;
-    ID3D10Blob *vertex_shader_buffer;
-    ID3D10Blob *pixel_shader_buffer;
-    D3D11_INPUT_ELEMENT_DESC polygon_layout[3];
-    u32 num_elements;
-    D3D11_BUFFER_DESC matrix_buffer_desc;
-
-    error_message = 0;
-    vertex_shader_buffer = 0;
-    pixel_shader_buffer = 0;
-
-    char *vsFileName = "Shaders/VertexShader.vs";
-    char *fsFileName = "Shaders/FragShader.fs";
-
-    // Compile the vertex shader code.
-    result = D3DX11CompileFromFile(vsFileName, NULL, NULL, "ColorVertexShader", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, NULL, 
-                                   &vertex_shader_buffer, &error_message, NULL
-                                  );
-    if(FAILED(result))
-    {
-      // If the shader failed to compile it should have writen something to the error message.
-      if(error_message)
-      {
-        outputShaderErrorMessage(error_message, window, vsFileName);
-      }
-      // If there was nothing in the error message then it simply could not find the shader file itself.
-      else
-      {
-        MessageBox(window, vsFileName, "Missing Shader File", MB_OK);
-      }
-
-      return;
-    }
-
-    // Compile the pixel shader code.
-    result = D3DX11CompileFromFile(fsFileName, NULL, NULL, "ColorPixelShader", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, NULL, 
-                                   &pixel_shader_buffer, &error_message, NULL
-                                  );
-    if(FAILED(result))
-    {
-      // If the shader failed to compile it should have writen something to the error message.
-      if(error_message)
-      {
-        outputShaderErrorMessage(error_message, window, fsFileName);
-      }
-      // If there was  nothing in the error message then it simply could not find the file itself.
-      else
-      {
-        MessageBox(window, fsFileName, "Missing Shader File", MB_OK);
-      }
-
-      return;
-    }
-
-    // Create the vertex shader from the buffer.
-    result = device->CreateVertexShader(vertex_shader_buffer->GetBufferPointer(), vertex_shader_buffer->GetBufferSize(), NULL, &renderer_data->first_shader.vertex_shader);
-    assert(!FAILED(result));
-
-    // Create the pixel shader from the buffer.
-    result = device->CreatePixelShader(pixel_shader_buffer->GetBufferPointer(), pixel_shader_buffer->GetBufferSize(), NULL, &renderer_data->first_shader.pixel_shader);
-    assert(!FAILED(result));
-
-    // Now setup the layout of the data that goes into the shader.
-    // This needs to match the layout of the structures inside the shader
-    polygon_layout[0].SemanticName = "POSITION";
-    polygon_layout[0].SemanticIndex = 0;
-    polygon_layout[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-    polygon_layout[0].InputSlot = 0;
-    polygon_layout[0].AlignedByteOffset = 0;
-    polygon_layout[0].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-    polygon_layout[0].InstanceDataStepRate = 0;
-
-#if 1
-    polygon_layout[1].SemanticName = "NORMAL";
-    polygon_layout[1].SemanticIndex = 0;
-    polygon_layout[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-    polygon_layout[1].InputSlot = 0;
-    polygon_layout[1].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-    polygon_layout[1].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-    polygon_layout[1].InstanceDataStepRate = 0;
-#endif
-
-    polygon_layout[2].SemanticName = "TEXCOORD";
-    polygon_layout[2].SemanticIndex = 0;
-    polygon_layout[2].Format = DXGI_FORMAT_R32G32_FLOAT;
-    polygon_layout[2].InputSlot = 0;
-    polygon_layout[2].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-    polygon_layout[2].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-    polygon_layout[2].InstanceDataStepRate = 0;
-
-    // Get a count of the elements in the layout.
-    num_elements = sizeof(polygon_layout) / sizeof(polygon_layout[0]);
-
-    // Create the vertex input layout.
-    result = device->CreateInputLayout(polygon_layout, num_elements, vertex_shader_buffer->GetBufferPointer(), 
-                                       vertex_shader_buffer->GetBufferSize(), &renderer_data->first_shader.layout
-                                      );
-    assert(!FAILED(result));
-
-    // Release the vertex shader buffer and pixel shader buffer since they are no longer needed.
-    vertex_shader_buffer->Release();
-    vertex_shader_buffer = 0;
-
-    pixel_shader_buffer->Release();
-    pixel_shader_buffer = 0;
-
-    // Setup the description of the dynamic matrix constant buffer that is in the vertex shader.
-    matrix_buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
-    matrix_buffer_desc.ByteWidth = sizeof(MatrixBufferType);
-    matrix_buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    matrix_buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    matrix_buffer_desc.MiscFlags = 0;
-    matrix_buffer_desc.StructureByteStride = 0;
-
-    // Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
-    result = device->CreateBuffer(&matrix_buffer_desc, NULL, &renderer_data->first_shader.matrix_buffer);
-    assert(!FAILED(result));
-  }
-
-
-
-
-
-
-
-
-
-
-
-
+  // Blend state
   ID3D11BlendState *blendState = NULL;
   D3D11_BLEND_DESC blendStateDesc = {};
   
@@ -797,12 +664,166 @@ void init_renderer(HWND window, u32 in_framebuffer_width, u32 in_framebuffer_hei
 
 
 
+
+
+
+
+  // Shaders
+
+
+  // As of 7/25/2019 all vertices in meshes have the same vertex layout in an AOS format.
+  // So, each shader uses the same element description for input vertices.
+  // This input element descrtion would need to change if different shaders took in a
+  // different vertex layout.
+  D3D11_INPUT_ELEMENT_DESC common_input_vertex_layout[3];
+  common_input_vertex_layout[0].SemanticName = "POSITION";
+  common_input_vertex_layout[0].SemanticIndex = 0;
+  common_input_vertex_layout[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+  common_input_vertex_layout[0].InputSlot = 0;
+  common_input_vertex_layout[0].AlignedByteOffset = 0;
+  common_input_vertex_layout[0].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+  common_input_vertex_layout[0].InstanceDataStepRate = 0;
+
+  common_input_vertex_layout[1].SemanticName = "NORMAL";
+  common_input_vertex_layout[1].SemanticIndex = 0;
+  common_input_vertex_layout[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+  common_input_vertex_layout[1].InputSlot = 0;
+  common_input_vertex_layout[1].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
+  common_input_vertex_layout[1].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+  common_input_vertex_layout[1].InstanceDataStepRate = 0;
+
+  common_input_vertex_layout[2].SemanticName = "TEXCOORD";
+  common_input_vertex_layout[2].SemanticIndex = 0;
+  common_input_vertex_layout[2].Format = DXGI_FORMAT_R32G32_FLOAT;
+  common_input_vertex_layout[2].InputSlot = 0;
+  common_input_vertex_layout[2].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
+  common_input_vertex_layout[2].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+  common_input_vertex_layout[2].InstanceDataStepRate = 0;
+
+  {
+    ID3D10Blob *error_message = 0;
+    ID3D10Blob *vertex_shader_buffer = 0;
+    ID3D10Blob *pixel_shader_buffer = 0;
+
+    char *vs_path = "shaders/diffuse.vs";
+    char *fs_path = "shaders/diffuse.ps";
+
+    // Compile the vertex shader code.
+    result = D3DX11CompileFromFile(vs_path, NULL, NULL, "ColorVertexShader", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, NULL, 
+                                   &vertex_shader_buffer, &error_message, NULL);
+    if(FAILED(result))
+    {
+      if(error_message) output_shader_errors(error_message, window, vs_path);
+      else assert(0); // Could not find shader file
+      return;
+    }
+
+    // Compile the pixel shader code.
+    result = D3DX11CompileFromFile(fs_path, NULL, NULL, "ColorPixelShader", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, NULL, 
+                                   &pixel_shader_buffer, &error_message, NULL);
+    if(FAILED(result))
+    {
+      if(error_message) output_shader_errors(error_message, window, fs_path);
+      else assert(0); // Could not find shader file
+      return;
+    }
+
+    // Create the vertex shader from the buffer.
+    result = device->CreateVertexShader(vertex_shader_buffer->GetBufferPointer(), vertex_shader_buffer->GetBufferSize(), NULL, &renderer_data->diffuse_shader.vertex_shader);
+    assert(!FAILED(result));
+
+    // Create the pixel shader from the buffer.
+    result = device->CreatePixelShader(pixel_shader_buffer->GetBufferPointer(), pixel_shader_buffer->GetBufferSize(), NULL, &renderer_data->diffuse_shader.pixel_shader);
+    assert(!FAILED(result));
+
+
+    // Create the vertex input layout.
+    u32 num_elements = sizeof(common_input_vertex_layout) / sizeof(common_input_vertex_layout[0]);
+    result = device->CreateInputLayout(common_input_vertex_layout, num_elements, vertex_shader_buffer->GetBufferPointer(), 
+                                       vertex_shader_buffer->GetBufferSize(), &renderer_data->diffuse_shader.layout);
+    assert(!FAILED(result));
+
+    // Release the vertex shader buffer and pixel shader buffer since they are no longer needed.
+    vertex_shader_buffer->Release();
+    pixel_shader_buffer->Release();
+  }
+
+
+  {
+    ID3D10Blob *error_message = 0;
+    ID3D10Blob *vertex_shader_buffer = 0;
+    ID3D10Blob *pixel_shader_buffer = 0;
+
+    char *vs_path = "shaders/quad.vs";
+    char *fs_path = "shaders/quad.ps";
+
+    // Compile the vertex shader code.
+    result = D3DX11CompileFromFile(vs_path, NULL, NULL, "QuadVertexShader", "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, NULL, 
+                                   &vertex_shader_buffer, &error_message, NULL);
+    if(FAILED(result))
+    {
+      if(error_message) output_shader_errors(error_message, window, vs_path);
+      else MessageBox(window, vs_path, "Missing Shader File", MB_OK);
+      return;
+    }
+
+    // Compile the pixel shader code.
+    result = D3DX11CompileFromFile(fs_path, NULL, NULL, "QuadPixelShader", "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, NULL, 
+                                   &pixel_shader_buffer, &error_message, NULL);
+    if(FAILED(result))
+    {
+      if(error_message) output_shader_errors(error_message, window, fs_path);
+      else MessageBox(window, fs_path, "Missing Shader File", MB_OK);
+      return;
+    }
+
+    // Create the vertex shader from the buffer.
+    result = device->CreateVertexShader(vertex_shader_buffer->GetBufferPointer(), vertex_shader_buffer->GetBufferSize(), NULL, &renderer_data->quad_shader.vertex_shader);
+    assert(!FAILED(result));
+
+    // Create the pixel shader from the buffer.
+    result = device->CreatePixelShader(pixel_shader_buffer->GetBufferPointer(), pixel_shader_buffer->GetBufferSize(), NULL, &renderer_data->quad_shader.pixel_shader);
+    assert(!FAILED(result));
+
+    // Create the vertex input layout.
+    u32 num_elements = sizeof(common_input_vertex_layout) / sizeof(common_input_vertex_layout[0]);
+    result = device->CreateInputLayout(common_input_vertex_layout, num_elements, vertex_shader_buffer->GetBufferPointer(), 
+                                       vertex_shader_buffer->GetBufferSize(), &renderer_data->quad_shader.layout);
+    assert(!FAILED(result));
+
+    // Release the vertex shader buffer and pixel shader buffer since they are no longer needed.
+    vertex_shader_buffer->Release();
+    pixel_shader_buffer->Release();
+  }
+
+
+
+
+
+  //
+  // TODO:
+  // Making a new global buffer for each shader to hold matrices is redundant.
+  // Maybe there are new buffers I can make and attach them on top of the matrix buffer when I need to extend the shaders?
+  // For now I'll just have the new shaders use the first matrix buffer.
+  D3D11_BUFFER_DESC matrix_buffer_desc;
+  matrix_buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
+  matrix_buffer_desc.ByteWidth = sizeof(MatrixBufferType);
+  matrix_buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+  matrix_buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+  matrix_buffer_desc.MiscFlags = 0;
+  matrix_buffer_desc.StructureByteStride = 0;
+  result = device->CreateBuffer(&matrix_buffer_desc, NULL, &renderer_data->first_matrix_buffer);
+  assert(!FAILED(result));
+
   // Textures
   D3D11_SAMPLER_DESC samplerDesc;
   
-  result = D3DX11CreateShaderResourceViewFromFile(device, "assets/WizardHat.png", NULL, NULL, &renderer_data->wizard_hat.texture_resource, NULL);
+  result = D3DX11CreateShaderResourceViewFromFile(device, "assets/Vivi.png", NULL, NULL, &renderer_data->wizard_hat.texture_resource, NULL);
   //result = D3DX11CreateShaderResourceViewFromFile(device, "assets/Vivi.png", NULL, NULL, &textures[1], NULL);
   assert(!FAILED(result));
+
+
+
 
   // Create a texture sampler state description.
   samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
@@ -843,6 +864,7 @@ void init_renderer(HWND window, u32 in_framebuffer_width, u32 in_framebuffer_hei
   model.scale = v3(1.0f, 1.0f, 1.0f);
   model.y_axis_rotation = -45.0f;
   model.mesh = teapot;
+  model.shader = &renderer_data->diffuse_shader;
 
   renderer_data->models_to_render.push_back(model);
 
@@ -851,7 +873,7 @@ void init_renderer(HWND window, u32 in_framebuffer_width, u32 in_framebuffer_hei
   vertices.clear();
 
   Mesh *hat = new Mesh();
-  load_obj("assets/wizard_hat2.obj", &vertices, 0, 0, &hat->indices);
+  load_obj("assets/wizard_hat.obj", &vertices, 0, 0, &hat->indices);
   for(v3 vertex : vertices)
   {
     hat->vertices.push_back(Mesh::Vertex(vertex, v3(), v2()));
@@ -860,10 +882,11 @@ void init_renderer(HWND window, u32 in_framebuffer_width, u32 in_framebuffer_hei
   hat->compute_vertex_normals();
   hat->fill_buffers(device);
 
-  model.position = v3(0.0f, 1.65f, 0.0f);
+  model.position = v3(0.0f, 1.55f, 0.0f);
   model.scale = v3(0.8f, 0.8f, 0.8f);
   model.y_axis_rotation = 45.0f;
   model.mesh = hat;
+  model.shader = &renderer_data->diffuse_shader;
 
   renderer_data->models_to_render.push_back(model);
 
@@ -871,23 +894,24 @@ void init_renderer(HWND window, u32 in_framebuffer_width, u32 in_framebuffer_hei
 
   vertices.clear();
 
-  Mesh *ground = new Mesh();
-  ground->vertices.push_back(Mesh::Vertex(v3(-1.0f, 0.0f,  1.0f), v3(0.0f, 1.0f, 0.0f), v2(0.0f, 1.0f)));
-  ground->vertices.push_back(Mesh::Vertex(v3( 1.0f, 0.0f,  1.0f), v3(0.0f, 1.0f, 0.0f), v2(1.0f, 1.0f)));
-  ground->vertices.push_back(Mesh::Vertex(v3( 1.0f, 0.0f, -1.0f), v3(0.0f, 1.0f, 0.0f), v2(1.0f, 0.0f)));
-  ground->vertices.push_back(Mesh::Vertex(v3(-1.0f, 0.0f, -1.0f), v3(0.0f, 1.0f, 0.0f), v2(0.0f, 0.0f)));
-  ground->indices.push_back(0);
-  ground->indices.push_back(1);
-  ground->indices.push_back(2);
-  ground->indices.push_back(0);
-  ground->indices.push_back(2);
-  ground->indices.push_back(3);
-  ground->fill_buffers(device);
+  Mesh *quad = new Mesh();
+  quad->vertices.push_back(Mesh::Vertex(v3(-1.0f, 0.0f,  1.0f), v3(0.0f, 1.0f, 0.0f), v2(0.0f, 1.0f)));
+  quad->vertices.push_back(Mesh::Vertex(v3( 1.0f, 0.0f,  1.0f), v3(0.0f, 1.0f, 0.0f), v2(1.0f, 1.0f)));
+  quad->vertices.push_back(Mesh::Vertex(v3( 1.0f, 0.0f, -1.0f), v3(0.0f, 1.0f, 0.0f), v2(1.0f, 0.0f)));
+  quad->vertices.push_back(Mesh::Vertex(v3(-1.0f, 0.0f, -1.0f), v3(0.0f, 1.0f, 0.0f), v2(0.0f, 0.0f)));
+  quad->indices.push_back(0);
+  quad->indices.push_back(1);
+  quad->indices.push_back(2);
+  quad->indices.push_back(0);
+  quad->indices.push_back(2);
+  quad->indices.push_back(3);
+  quad->fill_buffers(device);
 
   model.position = v3();
   model.scale = v3(10.0f, 10.0f, 10.0f);
   model.y_axis_rotation = 0.0f;
-  model.mesh = ground;
+  model.mesh = quad;
+  model.shader = &renderer_data->quad_shader;
 
   renderer_data->models_to_render.push_back(model);
 }
@@ -897,7 +921,7 @@ void render_model(Model *model)
   ID3D11DeviceContext *&device_context = renderer_data->resources.device_context;
   Window &window = renderer_data->window;
   Mesh &mesh = *model->mesh;
-  Shader &shader = renderer_data->first_shader;
+  Shader &shader = *model->shader;
   Texture &texture = renderer_data->wizard_hat;
 
   // Set the vertex buffer to active in the input assembler so it can be rendered.
@@ -985,7 +1009,7 @@ void render_model(Model *model)
   };
   mat4 clip_m_view = persp;
 
-  set_shader_paramters(device_context, shader.matrix_buffer, &world_m_model, &view_m_world, &clip_m_view, texture.texture_resource);
+  set_shader_paramters(device_context, renderer_data->first_matrix_buffer, &world_m_model, &view_m_world, &clip_m_view, texture.texture_resource);
 
   // Set the sampler state in the pixel shader.
   device_context->PSSetSamplers(0, 1, &texture.sample_state);

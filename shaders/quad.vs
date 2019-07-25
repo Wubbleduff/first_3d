@@ -8,17 +8,18 @@ cbuffer MatrixBuffer
 struct VSInput
 {
   float3 position : POSITION;
-  float2 tex : TEXCOORD0;
+  float3 normal : NORMAL;
+  float2 tex : TEXCOORD;
 };
 
 struct VSOutput
 {
   float4 position : SV_POSITION;
-  float2 tex : TEXCOORD0;
+  float2 tex : TEXCOORD;
 };
 
 // Vertex shader
-VSOutput ColorVertexShader(VSInput input)
+VSOutput QuadVertexShader(VSInput input)
 {
   VSOutput output;
 
