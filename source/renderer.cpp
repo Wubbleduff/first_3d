@@ -3,16 +3,7 @@
 #include "asset_loading.h" // Loading models
 
 
-#include <d3d11.h>
-#include <dxgi.h>
-#include <d3dcommon.h>
-#include <d3dx10math.h>
-#include <d3dx11async.h>
-#include <d3dx11tex.h>
-
 #include <assert.h>
-
-#include <vector> // vector for meshes
 
 
 // Renderer target info
@@ -57,8 +48,6 @@ struct Texture
   ID3D11SamplerState *sample_state;
 };
 
-
-
 struct MatrixBufferType
 {
   mat4 world_m_model;
@@ -66,206 +55,12 @@ struct MatrixBufferType
   mat4 clip_m_view;
 };
 
-struct Mesh
-{
-  struct Vertex
-  {
-    v3 position;
-    v3 normal;
-    v2 uv;
-
-    Vertex(v3 a, v3 b, v2 c) : position(a), normal(b), uv(c) {}
-  };
-
-  std::vector<Vertex> vertices;
-  //std::vector<v3> vertices;
-  //std::vector<v3> normals;
-  //std::vector<v3> materials;
-  //std::vector<v2> uvs;
-  std::vector<u32> indices;
-
-
-  ID3D11Buffer *vertex_buffer;
-  ID3D11Buffer *index_buffer;
-
-
-  u32 draw_mode = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-
-  void normalize()
-  {
-    // Get the min and max values for each axis
-    f32 min_x = INFINITY;
-    f32 max_x = -INFINITY;
-    f32 min_y = INFINITY;
-    f32 max_y = -INFINITY;
-    f32 min_z = INFINITY;
-    f32 max_z = -INFINITY;
-    v3 sum_points = {0.0f, 0.0f, 0.0f};
-    for(u32 i = 0; i < vertices.size(); i++)
-    {
-      min_x = min(min_x, vertices[i].position.x);
-      max_x = max(max_x, vertices[i].position.x);
-      min_y = min(min_y, vertices[i].position.y);
-      max_y = max(max_y, vertices[i].position.y);
-      min_z = min(min_z, vertices[i].position.z);
-      max_z = max(max_z, vertices[i].position.z);
-
-      sum_points += vertices[i].position;
-    }
-
-    // Find center of model
-    sum_points /= (f32)vertices.size();
-
-    // Get the max difference in an axis
-    f32 diff_x = max_x - min_x;
-    f32 diff_y = max_y - min_y;
-    f32 diff_z = max_z - min_z;
-
-    f32 max_diff = max(diff_x, max(diff_x, diff_y));
-
-    // Move vertices to center and scale down
-    for(u32 i = 0; i < vertices.size(); i++)
-    {
-      // Move centroid to origin
-      vertices[i].position -= sum_points;
-
-      // Scale down to between -1 and 1
-      vertices[i].position = (vertices[i].position / max_diff) * 2.0f;
-    }
-  }
-
-  void compute_vertex_normals()
-  {
-    if(vertices.size() == 0) return;
-
-    // Allocate buffers
-    //normals.reserve(vertices.size());
-    //normals.resize(vertices.size());
-
-    std::vector<f32> sums;
-    sums.reserve(vertices.size());
-    sums.resize(vertices.size());
-
-    // Initalize to zero
-    for(u32 i = 0; i < vertices.size(); i++)
-    {
-      vertices[i].normal = v3(0.0f, 0.0f, 0.0f);
-    }
-    for(u32 i = 0; i < sums.size(); i++)
-    {
-      sums[i] = 0.0f;
-    }
-
-    // Find the sum of all normals per vertex
-    for(u32 i = 0; i < indices.size(); )
-    {
-      u32 p0_index = indices[i++];
-      u32 p1_index = indices[i++];
-      u32 p2_index = indices[i++];
-
-      v3 p0 = vertices[p0_index].position;
-      v3 p1 = vertices[p1_index].position;
-      v3 p2 = vertices[p2_index].position;
-
-      v3 normal = cross(p1 - p0, p2 - p0);
-      if(length_squared(normal) == 0.0f)
-      {
-        normal = v3(0.0f, 0.0f, 0.0f);
-      }
-      else
-      {
-        normal = unit(normal);
-      }
-
-
-      vertices[p0_index].normal += normal;
-      vertices[p1_index].normal += normal;
-      vertices[p2_index].normal += normal;
-
-      sums[p0_index] += 1.0f;
-      sums[p1_index] += 1.0f;
-      sums[p2_index] += 1.0f;
-    }
-
-    // Divide to find average normal per vertex
-    for(u32 i = 0; i < vertices.size(); i++)
-    {
-      if(sums[i] == 0.0f) continue;
-      vertices[i].normal /= sums[i];
-    }
-  }
-
-  void fill_buffers(ID3D11Device *device)
-  {
-    // Vertices
-    {
-      // Set up the description of the static vertex buffer.
-      D3D11_BUFFER_DESC vertex_buffer_desc;
-      vertex_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-      vertex_buffer_desc.ByteWidth = sizeof(Vertex) * vertices.size();
-      vertex_buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-      vertex_buffer_desc.CPUAccessFlags = 0;
-      vertex_buffer_desc.MiscFlags = 0;
-      vertex_buffer_desc.StructureByteStride = 0;
-
-      // Give the subresource structure a pointer to the vertex data.
-      D3D11_SUBRESOURCE_DATA vertex_data;
-      vertex_data.pSysMem = vertices.data();
-      vertex_data.SysMemPitch = 0;
-      vertex_data.SysMemSlicePitch = 0;
-
-      // Now create the vertex buffer.
-      HRESULT result = device->CreateBuffer(&vertex_buffer_desc, &vertex_data, &vertex_buffer);
-      assert(!FAILED(result));
-    }
-
-    // Indices
-    {
-      D3D11_BUFFER_DESC index_buffer_desc;
-      index_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-      index_buffer_desc.ByteWidth = sizeof(u32) * indices.size();
-      index_buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-      index_buffer_desc.CPUAccessFlags = 0;
-      index_buffer_desc.MiscFlags = 0;
-      index_buffer_desc.StructureByteStride = 0;
-
-      D3D11_SUBRESOURCE_DATA index_data;
-      index_data.pSysMem = indices.data();
-      index_data.SysMemPitch = 0;
-      index_data.SysMemSlicePitch = 0;
-
-      HRESULT result = device->CreateBuffer(&index_buffer_desc, &index_data, &index_buffer);
-      assert(!FAILED(result));
-    }
-  }
-
-  void clear_buffers()
-  {
-    if(index_buffer) index_buffer->Release();
-    if(vertex_buffer) vertex_buffer->Release();
-  }
-};
-
-struct Model
-{
-  v3 position = v3();
-  v3 scale = v3(1.0f, 1.0f, 1.0f);
-
-  // In degrees
-  float y_axis_rotation = 0.0f;
-
-  Mesh *mesh = 0;
-  Shader *shader = 0;
-};
-
 struct Camera
 {
   v3 position = v3(0.0f, 1.0f, 5.0f);
 
-  // In degrees
-  float latitude = 90.0f;
-  float longitude = -90.0f;
+  v3 looking_direction = v3(0.0f, 0.0f, 1.0f);
+
   float field_of_view = deg_to_rad(60.0f);
 };
 
@@ -280,8 +75,6 @@ struct RendererData
   // Gobal matrix buffer for now. See TODO about this in the shader creation code.
   ID3D11Buffer *first_matrix_buffer;
 
-  Texture wizard_hat;
-
   std::vector<Model> models_to_render;
   
   Camera camera;
@@ -294,9 +87,16 @@ static const v3 WORLD_UP_VECTOR = {0.0f, 1.0f, 0.0f};
 
 
 
+
+
+
+
+
+
+
 static void set_shader_paramters(ID3D11DeviceContext *device_context, ID3D11Buffer *matrix_buffer,
                                  const mat4 *world_m_model, const mat4 *view_m_world, const mat4 *clip_m_view,
-                                 ID3D11ShaderResourceView *texture
+                                 Texture *texture
                                 )
 {
   HRESULT result;
@@ -325,8 +125,15 @@ static void set_shader_paramters(ID3D11DeviceContext *device_context, ID3D11Buff
   // Finanly set the constant buffer in the vertex shader with the updated values.
   device_context->VSSetConstantBuffers(buffer_number, 1, &matrix_buffer);
 
-  // Set shader texture resource in the pixel shader.
-  device_context->PSSetShaderResources(0, 1, &texture);
+  if(texture)
+  {
+    // Set shader texture resource in the pixel shader.
+    device_context->PSSetShaderResources(0, 1, &texture->texture_resource);
+
+    // Set the sampler state in the pixel shader.
+    device_context->PSSetSamplers(0, 1, &texture->sample_state);
+  }
+
 }
 
 static void output_shader_errors(ID3D10Blob *error_message, HWND hwnd, const s8 *shader_file)
@@ -360,6 +167,172 @@ static void output_shader_errors(ID3D10Blob *error_message, HWND hwnd, const s8 
   // Pop a message up on the screen to notify the user to check the text file for compile errors.
   //MessageBox(hwnd, "Error compiling shader.  Check shader-error.txt for message.", shader_file, MB_OK);
 }
+
+
+
+
+
+
+
+void Mesh::normalize()
+{
+  // Get the min and max values for each axis
+  f32 min_x = INFINITY;
+  f32 max_x = -INFINITY;
+  f32 min_y = INFINITY;
+  f32 max_y = -INFINITY;
+  f32 min_z = INFINITY;
+  f32 max_z = -INFINITY;
+  v3 sum_points = {0.0f, 0.0f, 0.0f};
+  for(u32 i = 0; i < vertices.size(); i++)
+  {
+    min_x = min(min_x, vertices[i].position.x);
+    max_x = max(max_x, vertices[i].position.x);
+    min_y = min(min_y, vertices[i].position.y);
+    max_y = max(max_y, vertices[i].position.y);
+    min_z = min(min_z, vertices[i].position.z);
+    max_z = max(max_z, vertices[i].position.z);
+
+    sum_points += vertices[i].position;
+  }
+
+  // Find center of model
+  sum_points /= (f32)vertices.size();
+
+  // Get the max difference in an axis
+  f32 diff_x = max_x - min_x;
+  f32 diff_y = max_y - min_y;
+  f32 diff_z = max_z - min_z;
+
+  f32 max_diff = max(diff_x, max(diff_x, diff_y));
+
+  // Move vertices to center and scale down
+  for(u32 i = 0; i < vertices.size(); i++)
+  {
+    // Move centroid to origin
+    vertices[i].position -= sum_points;
+
+    // Scale down to between -1 and 1
+    vertices[i].position = (vertices[i].position / max_diff) * 2.0f;
+  }
+}
+
+void Mesh::compute_vertex_normals()
+{
+  if(vertices.size() == 0) return;
+
+  // Allocate buffers
+  //normals.reserve(vertices.size());
+  //normals.resize(vertices.size());
+
+  std::vector<f32> sums;
+  sums.reserve(vertices.size());
+  sums.resize(vertices.size());
+
+  // Initalize to zero
+  for(u32 i = 0; i < vertices.size(); i++)
+  {
+    vertices[i].normal = v3(0.0f, 0.0f, 0.0f);
+  }
+  for(u32 i = 0; i < sums.size(); i++)
+  {
+    sums[i] = 0.0f;
+  }
+
+  // Find the sum of all normals per vertex
+  for(u32 i = 0; i < indices.size(); )
+  {
+    u32 p0_index = indices[i++];
+    u32 p1_index = indices[i++];
+    u32 p2_index = indices[i++];
+
+    v3 p0 = vertices[p0_index].position;
+    v3 p1 = vertices[p1_index].position;
+    v3 p2 = vertices[p2_index].position;
+
+    v3 normal = cross(p1 - p0, p2 - p0);
+    if(length_squared(normal) == 0.0f)
+    {
+      normal = v3(0.0f, 0.0f, 0.0f);
+    }
+    else
+    {
+      normal = unit(normal);
+    }
+
+
+    vertices[p0_index].normal += normal;
+    vertices[p1_index].normal += normal;
+    vertices[p2_index].normal += normal;
+
+    sums[p0_index] += 1.0f;
+    sums[p1_index] += 1.0f;
+    sums[p2_index] += 1.0f;
+  }
+
+  // Divide to find average normal per vertex
+  for(u32 i = 0; i < vertices.size(); i++)
+  {
+    if(sums[i] == 0.0f) continue;
+    vertices[i].normal /= sums[i];
+  }
+}
+
+void Mesh::fill_buffers(ID3D11Device *device)
+{
+  // Vertices
+  {
+    // Set up the description of the static vertex buffer.
+    D3D11_BUFFER_DESC vertex_buffer_desc;
+    vertex_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+    vertex_buffer_desc.ByteWidth = sizeof(Vertex) * vertices.size();
+    vertex_buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    vertex_buffer_desc.CPUAccessFlags = 0;
+    vertex_buffer_desc.MiscFlags = 0;
+    vertex_buffer_desc.StructureByteStride = 0;
+
+    // Give the subresource structure a pointer to the vertex data.
+    D3D11_SUBRESOURCE_DATA vertex_data;
+    vertex_data.pSysMem = vertices.data();
+    vertex_data.SysMemPitch = 0;
+    vertex_data.SysMemSlicePitch = 0;
+
+    // Now create the vertex buffer.
+    HRESULT result = device->CreateBuffer(&vertex_buffer_desc, &vertex_data, &vertex_buffer);
+    assert(!FAILED(result));
+  }
+
+  // Indices
+  {
+    D3D11_BUFFER_DESC index_buffer_desc;
+    index_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+    index_buffer_desc.ByteWidth = sizeof(u32) * indices.size();
+    index_buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    index_buffer_desc.CPUAccessFlags = 0;
+    index_buffer_desc.MiscFlags = 0;
+    index_buffer_desc.StructureByteStride = 0;
+
+    D3D11_SUBRESOURCE_DATA index_data;
+    index_data.pSysMem = indices.data();
+    index_data.SysMemPitch = 0;
+    index_data.SysMemSlicePitch = 0;
+
+    HRESULT result = device->CreateBuffer(&index_buffer_desc, &index_data, &index_buffer);
+    assert(!FAILED(result));
+  }
+}
+
+
+void Mesh::clear_buffers()
+{
+  if(index_buffer) index_buffer->Release();
+  if(vertex_buffer) vertex_buffer->Release();
+}
+
+
+
+
+
 
 void init_renderer(HWND window, u32 in_framebuffer_width, u32 in_framebuffer_height, bool is_fullscreen, bool is_vsync)
 {
@@ -412,7 +385,7 @@ void init_renderer(HWND window, u32 in_framebuffer_width, u32 in_framebuffer_hei
   assert(!FAILED(result));
 
   // Create a list to hold all the possible display modes for this monitor/video card combination.
-  DXGI_MODE_DESC *display_mode_list= new DXGI_MODE_DESC[num_modes];
+  DXGI_MODE_DESC *display_mode_list = new DXGI_MODE_DESC[num_modes];
 
   // Now fill the display mode list structures.
   result = adapter_output->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &num_modes, display_mode_list);
@@ -617,6 +590,7 @@ void init_renderer(HWND window, u32 in_framebuffer_width, u32 in_framebuffer_hei
   raster_desc.DepthBiasClamp = 0.0f;
   raster_desc.DepthClipEnable = true;
   raster_desc.FillMode = D3D11_FILL_SOLID;
+  //raster_desc.FillMode = D3D11_FILL_WIREFRAME;
   raster_desc.FrontCounterClockwise = true;
   raster_desc.MultisampleEnable = false;
   raster_desc.ScissorEnable = false;
@@ -814,142 +788,39 @@ void init_renderer(HWND window, u32 in_framebuffer_width, u32 in_framebuffer_hei
   matrix_buffer_desc.StructureByteStride = 0;
   result = device->CreateBuffer(&matrix_buffer_desc, NULL, &renderer_data->first_matrix_buffer);
   assert(!FAILED(result));
-
-  // Textures
-  D3D11_SAMPLER_DESC samplerDesc;
-  
-  result = D3DX11CreateShaderResourceViewFromFile(device, "assets/Vivi.png", NULL, NULL, &renderer_data->wizard_hat.texture_resource, NULL);
-  //result = D3DX11CreateShaderResourceViewFromFile(device, "assets/Vivi.png", NULL, NULL, &textures[1], NULL);
-  assert(!FAILED(result));
-
-
-
-
-  // Create a texture sampler state description.
-  samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-  samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-  samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-  samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-  samplerDesc.MipLODBias = 0.0f;
-  samplerDesc.MaxAnisotropy = 1;
-  samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-  samplerDesc.BorderColor[0] = 0;
-  samplerDesc.BorderColor[1] = 0;
-  samplerDesc.BorderColor[2] = 0;
-  samplerDesc.BorderColor[3] = 0;
-  samplerDesc.MinLOD = 0;
-  samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-
-  // Create the texture sampler state.
-  result = device->CreateSamplerState(&samplerDesc, &renderer_data->wizard_hat.sample_state);
-  assert(!FAILED(result));
-
-
-
-
-
-  Mesh *teapot = new Mesh();
-  std::vector<v3> vertices;
-  load_obj("assets/teapot.obj", &vertices, 0, 0, &teapot->indices);
-  for(v3 vertex : vertices)
-  {
-    teapot->vertices.push_back(Mesh::Vertex(vertex, v3(), v2()));
-  }
-  teapot->normalize();
-  teapot->compute_vertex_normals();
-  teapot->fill_buffers(device);
-
-  Model model;
-  model.position = v3(0.0f, 1.0f, 0.0f);
-  model.scale = v3(1.0f, 1.0f, 1.0f);
-  model.y_axis_rotation = -45.0f;
-  model.mesh = teapot;
-  model.shader = &renderer_data->diffuse_shader;
-
-  renderer_data->models_to_render.push_back(model);
-
-
-
-  vertices.clear();
-
-  Mesh *hat = new Mesh();
-  load_obj("assets/wizard_hat.obj", &vertices, 0, 0, &hat->indices);
-  for(v3 vertex : vertices)
-  {
-    hat->vertices.push_back(Mesh::Vertex(vertex, v3(), v2()));
-  }
-  hat->normalize();
-  hat->compute_vertex_normals();
-  hat->fill_buffers(device);
-
-  model.position = v3(0.0f, 1.55f, 0.0f);
-  model.scale = v3(0.8f, 0.8f, 0.8f);
-  model.y_axis_rotation = 45.0f;
-  model.mesh = hat;
-  model.shader = &renderer_data->diffuse_shader;
-
-  renderer_data->models_to_render.push_back(model);
-
-
-
-  vertices.clear();
-
-  Mesh *quad = new Mesh();
-  quad->vertices.push_back(Mesh::Vertex(v3(-1.0f, 0.0f,  1.0f), v3(0.0f, 1.0f, 0.0f), v2(0.0f, 1.0f)));
-  quad->vertices.push_back(Mesh::Vertex(v3( 1.0f, 0.0f,  1.0f), v3(0.0f, 1.0f, 0.0f), v2(1.0f, 1.0f)));
-  quad->vertices.push_back(Mesh::Vertex(v3( 1.0f, 0.0f, -1.0f), v3(0.0f, 1.0f, 0.0f), v2(1.0f, 0.0f)));
-  quad->vertices.push_back(Mesh::Vertex(v3(-1.0f, 0.0f, -1.0f), v3(0.0f, 1.0f, 0.0f), v2(0.0f, 0.0f)));
-  quad->indices.push_back(0);
-  quad->indices.push_back(1);
-  quad->indices.push_back(2);
-  quad->indices.push_back(0);
-  quad->indices.push_back(2);
-  quad->indices.push_back(3);
-  quad->fill_buffers(device);
-
-  model.position = v3();
-  model.scale = v3(10.0f, 10.0f, 10.0f);
-  model.y_axis_rotation = 0.0f;
-  model.mesh = quad;
-  model.shader = &renderer_data->quad_shader;
-
-  renderer_data->models_to_render.push_back(model);
 }
 
-void render_model(Model *model)
+void render_mesh(Mesh *mesh, v3 position, v3 scale, float y_axis_rotation, Shader *shader, Texture *texture)
 {
   ID3D11DeviceContext *&device_context = renderer_data->resources.device_context;
   Window &window = renderer_data->window;
-  Mesh &mesh = *model->mesh;
-  Shader &shader = *model->shader;
-  Texture &texture = renderer_data->wizard_hat;
 
   // Set the vertex buffer to active in the input assembler so it can be rendered.
-  ID3D11Buffer *buffers[] = {mesh.vertex_buffer};
+  ID3D11Buffer *buffers[] = {mesh->vertex_buffer};
   u32 strides[] = {sizeof(Mesh::Vertex)};
   u32 offsets[] = {0};
   u32 num_buffers = sizeof(buffers) / sizeof(buffers[0]);
   device_context->IASetVertexBuffers(0, num_buffers, buffers, strides, offsets);
 
   // Set the index buffer to active in the input assembler so it can be rendered.
-  device_context->IASetIndexBuffer(mesh.index_buffer, DXGI_FORMAT_R32_UINT, 0);
+  device_context->IASetIndexBuffer(mesh->index_buffer, DXGI_FORMAT_R32_UINT, 0);
 
   // Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
   device_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 
   // Set the vertex input layout.
-  device_context->IASetInputLayout(shader.layout);
+  device_context->IASetInputLayout(shader->layout);
 
   // Set the vertex and pixel shaders that will be used to render this triangle.
-  device_context->VSSetShader(shader.vertex_shader, NULL, 0);
-  device_context->PSSetShader(shader.pixel_shader, NULL, 0);
+  device_context->VSSetShader(shader->vertex_shader, NULL, 0);
+  device_context->PSSetShader(shader->pixel_shader, NULL, 0);
 
 
   // World matrix
-  mat4 scale_matrix = make_scale_matrix(model->scale);
-  mat4 rotation_matrix = make_y_axis_rotation_matrix(deg_to_rad(model->y_axis_rotation));
-  mat4 translation_matrix = make_translation_matrix(model->position);
+  mat4 scale_matrix = make_scale_matrix(scale);
+  mat4 rotation_matrix = make_y_axis_rotation_matrix(deg_to_rad(y_axis_rotation));
+  mat4 translation_matrix = make_translation_matrix(position);
   mat4 world_m_model = translation_matrix * rotation_matrix * scale_matrix;
 
 
@@ -957,7 +828,7 @@ void render_model(Model *model)
   // w
   // This is looking away from the target
   Camera &camera = renderer_data->camera;
-  v3 camera_to_target = get_camera_to_target(1.0f, camera.latitude, camera.longitude);
+  v3 camera_to_target = camera.looking_direction;
   v3 target_axis = -camera_to_target;
   // u
   v3 right_axis = cross(WORLD_UP_VECTOR, target_axis);
@@ -982,15 +853,8 @@ void render_model(Model *model)
   f32 far_plane = 100.0f;
   f32 zoom = 1.0f;
 
-  // Create an orthographic projection matrix for 2D rendering.
-  D3DXMATRIX d3d_ortho;
-  D3DXMatrixOrthoRH(&d3d_ortho, zoom * window.aspect_ratio, zoom, near_plane, far_plane);
-
   // Create the projection matrix for 3D rendering.
   f32 fov = deg_to_rad(60.0f) * zoom;
-  //D3DXMATRIX d3d_persp;
-  //D3DXMatrixPerspectiveFovRH(&d3d_persp, fov, window.aspect_ratio, near_plane, far_plane);
-  //
   // Distance from the near plane (must be positive)
   f32 n = near_plane;
   // Distance from the far plane (must be positive)
@@ -1009,13 +873,15 @@ void render_model(Model *model)
   };
   mat4 clip_m_view = persp;
 
-  set_shader_paramters(device_context, renderer_data->first_matrix_buffer, &world_m_model, &view_m_world, &clip_m_view, texture.texture_resource);
-
-  // Set the sampler state in the pixel shader.
-  device_context->PSSetSamplers(0, 1, &texture.sample_state);
+  set_shader_paramters(device_context, renderer_data->first_matrix_buffer, &world_m_model, &view_m_world, &clip_m_view, texture);
 
   // Render the triangle.
-  device_context->DrawIndexed(mesh.indices.size(), 0, 0);
+  device_context->DrawIndexed(mesh->indices.size(), 0, 0);
+}
+
+void render_model(Model *model)
+{
+  render_mesh(model->mesh, model->position, model->scale, model->y_axis_rotation, model->shader, model->texture);
 }
 
 void render()
@@ -1134,18 +1000,92 @@ void shutdown()
 #endif
 }
 
-
-
-v3 *camera_position() { return &renderer_data->camera.position; }
-float *camera_latitude() { return &renderer_data->camera.latitude; }
-float *camera_longitude() { return &renderer_data->camera.longitude; }
-
-// In degrees
-v3 get_camera_to_target(float radius, float latitude, float longitude)
+ModelHandle create_model(const s8 *obj_path)
 {
-  float x = radius * sin(deg_to_rad(longitude)) * cos(deg_to_rad(latitude));
-  float z = radius * sin(deg_to_rad(longitude)) * sin(deg_to_rad(latitude));
-  float y = radius * cos(deg_to_rad(longitude));
-  return v3(x, y, z);
+  Model model;
+
+  model.mesh = new Mesh();
+  std::vector<v3> vertices;
+
+  load_obj(obj_path, &vertices, 0, 0, &model.mesh->indices);
+  for(v3 vertex : vertices)
+  {
+    model.mesh->vertices.push_back(Mesh::Vertex(vertex, v3(), v2()));
+  }
+  model.mesh->normalize();
+  model.mesh->compute_vertex_normals();
+  model.mesh->fill_buffers(renderer_data->resources.device);
+
+  model.shader = &renderer_data->diffuse_shader;
+
+
+  renderer_data->models_to_render.push_back(model);
+
+  return renderer_data->models_to_render.size() - 1;
 }
+
+ModelHandle create_model(PrimitiveType primitive, const s8 *texture_path)
+{
+  Model model;
+  model.mesh = new Mesh();
+
+  if(primitive == PRIMITIVE_QUAD)
+  {
+    model.mesh->vertices.push_back(Mesh::Vertex(v3(-1.0f, 0.0f,  1.0f), v3(0.0f, 1.0f, 0.0f), v2(0.0f, 1.0f)));
+    model.mesh->vertices.push_back(Mesh::Vertex(v3( 1.0f, 0.0f,  1.0f), v3(0.0f, 1.0f, 0.0f), v2(1.0f, 1.0f)));
+    model.mesh->vertices.push_back(Mesh::Vertex(v3( 1.0f, 0.0f, -1.0f), v3(0.0f, 1.0f, 0.0f), v2(1.0f, 0.0f)));
+    model.mesh->vertices.push_back(Mesh::Vertex(v3(-1.0f, 0.0f, -1.0f), v3(0.0f, 1.0f, 0.0f), v2(0.0f, 0.0f)));
+    model.mesh->indices.push_back(0);
+    model.mesh->indices.push_back(1);
+    model.mesh->indices.push_back(2);
+    model.mesh->indices.push_back(0);
+    model.mesh->indices.push_back(2);
+    model.mesh->indices.push_back(3);
+
+    model.shader = &renderer_data->quad_shader;
+  }
+  model.mesh->fill_buffers(renderer_data->resources.device);
+
+  // Textures
+  model.texture = new Texture();
+  D3D11_SAMPLER_DESC samplerDesc;
+
+  HRESULT result = D3DX11CreateShaderResourceViewFromFile(renderer_data->resources.device, "assets/Vivi.png", NULL, NULL, &model.texture->texture_resource, NULL);
+  //result = D3DX11CreateShaderResourceViewFromFile(device, "assets/Vivi.png", NULL, NULL, &textures[1], NULL);
+  assert(!FAILED(result));
+  // Create a texture sampler state description.
+  samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+  samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+  samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+  samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+  samplerDesc.MipLODBias = 0.0f;
+  samplerDesc.MaxAnisotropy = 1;
+  samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+  samplerDesc.BorderColor[0] = 0;
+  samplerDesc.BorderColor[1] = 0;
+  samplerDesc.BorderColor[2] = 0;
+  samplerDesc.BorderColor[3] = 0;
+  samplerDesc.MinLOD = 0;
+  samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+  // Create the texture sampler state.
+  result = renderer_data->resources.device->CreateSamplerState(&samplerDesc, &model.texture->sample_state);
+  assert(!FAILED(result));
+
+  renderer_data->models_to_render.push_back(model);
+
+  return renderer_data->models_to_render.size() - 1;
+}
+
+Model *get_temp_model_pointer(ModelHandle model)
+{
+  return &renderer_data->models_to_render[model];
+}
+
+
+
+v3 *get_camera_position() { return &renderer_data->camera.position; }
+
+v3 *get_camera_looking() { return &renderer_data->camera.looking_direction; }
+
 
