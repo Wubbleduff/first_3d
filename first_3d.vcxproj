@@ -20,7 +20,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
-    <ProjectGuid>{9D907901-FEA6-42E9-8F8B-1F05C0079DF8}</ProjectGuid>
+    <ProjectGuid>{58C5D8EA-AB1F-4649-924D-A492CF05EAF7}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -65,11 +65,15 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>libs\DX\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>libs\DX\Lib\x86;$(LibraryPath)</LibraryPath>
+    <IncludePath>libs\DX\Include;libs\stb;$(IncludePath)</IncludePath>
+    <LibraryPath>libs\DX\Lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>libs\DX\Include;libs\stb;$(IncludePath)</IncludePath>
+    <LibraryPath>libs\DX\Lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -101,17 +105,25 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Link>
+      <AdditionalDependencies>dxgi.lib;d3d11.lib;d3dx11.lib;d3dx10.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="source\asset_loading.cpp" />
-    <ClCompile Include="source\main.cpp" />
-    <ClCompile Include="source\renderer.cpp" />
+    <ClCompile Include="source\platform_win\asset_loading.cpp" />
+    <ClCompile Include="source\platform_win\compiler_translation_unit.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="source\platform_win\main.cpp" />
+    <ClCompile Include="source\platform_win\renderer.cpp" />
     <ClCompile Include="source\world.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="source\asset_loading.h" />
+    <ClInclude Include="source\graphics.h" />
     <ClInclude Include="source\my_math.h" />
-    <ClInclude Include="source\renderer.h" />
-    <ClInclude Include="source\types.h" />
+    <ClInclude Include="source\platform_win\asset_loading.h" />
+    <ClInclude Include="source\platform_win\renderer.h" />
     <ClInclude Include="source\world.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -3,6 +3,8 @@ cbuffer MatrixBuffer
   matrix world_m_model;
   matrix view_m_world;
   matrix clip_m_view;
+  matrix light_clip_m_model;
+  float4 color;
 };
 
 struct VSInput
@@ -16,10 +18,11 @@ struct VSOutput
 {
   float4 position : SV_POSITION;
   float2 tex : TEXCOORD;
+  float4 blend_color : COLOR;
 };
 
 // Vertex shader
-VSOutput QuadVertexShader(VSInput input)
+VSOutput quad_vertex_shader(VSInput input)
 {
   VSOutput output;
 
@@ -34,6 +37,8 @@ VSOutput QuadVertexShader(VSInput input)
   
   // Tex coords
   output.tex = input.tex;
+
+  output.blend_color = color;
   
   return output;
 }

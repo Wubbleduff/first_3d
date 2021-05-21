@@ -1,23 +1,22 @@
 #include "world.h"
 #include "my_math.h"
 
-#include "renderer.h"
+#include "graphics.h"
 
-bool key_state(u32 button);
-v2 mouse_window_position();
-v2 mouse_delta_position();
-void set_cursor_locked(bool locked);
-
-static bool cursor_locked = false;
-static const v3 WORLD_UP_VECTOR = {0.0f, 1.0f, 0.0f};
+//static const v3 WORLD_UP_VECTOR = {0.0f, 1.0f, 0.0f};
 
 
-static ModelHandle hat_handle;
-static ModelHandle teapot_handle;
-static ModelHandle ground_handle;
+static Model hat_handle;
+static Model teapot_handle;
+static Model ground_handle;
+
+static float camera_latitude = 90.0f;
+static float camera_longitude = -90.0f;
+
+bool cursor_locked = true;
 
 // In degrees
-v3 get_camera_to_target(float radius, float latitude, float longitude)
+static v3 spherical_to_cartesian(float radius, float latitude, float longitude)
 {
   float x = radius * sin(deg_to_rad(longitude)) * cos(deg_to_rad(latitude));
   float z = radius * sin(deg_to_rad(longitude)) * sin(deg_to_rad(latitude));
@@ -28,81 +27,106 @@ v3 get_camera_to_target(float radius, float latitude, float longitude)
 
 void init_world()
 {
-  hat_handle = create_model("assets/wizard_hat.obj");
-  Model *hat = get_temp_model_pointer(hat_handle);
-  hat->position = v3(0.0f, 1.55f, 0.0f);
+  hat_handle = create_model("assets/wizard_hat.obj", v3(0.0f, 1.55f, 0.0f), v3(1.0f, 1.0f, 1.0f), v3(0.0f, -45.0f, 0.0f));
+  set_model_color(hat_handle, Color(0.4f, 0.0f, 0.5f));
 
   teapot_handle = create_model("assets/teapot.obj");
-  Model *teapot = get_temp_model_pointer(teapot_handle);
-  teapot->position = v3(0.0f, 1.0f, 0.0f);
+  set_model_color(teapot_handle, Color(0.0f, 0.0f, 0.5f));
 
-  ground_handle = create_model(PRIMITIVE_QUAD, "assets/wizard_hat.png");
-
-  Model *ground = get_temp_model_pointer(ground_handle);
-  ground->scale = v3(10.0f, 1.0f, 10.0f);
+  ground_handle = create_model("assets/terrain.obj", v3(), v3(1000.0f, 1.0f, 1000.0f));
+  set_model_color(ground_handle, Color(0.1f, 0.2f, 0.0f));
 }
 
 void update_world()
 {
+  /*
   static bool pressed = true;
   if(key_state(VK_SHIFT) == true && !pressed)
   {
     cursor_locked = !cursor_locked;
   }
   pressed = key_state(VK_SHIFT);
-  set_cursor_locked(cursor_locked);
+  */
 
 
   if(cursor_locked)
   {
-    v3 *cam_position = camera_position();
-    float *latitude = camera_latitude();
-    float *longitude = camera_longitude();
+    v3 player_position = get_model_position(teapot_handle);
+    float player_rotation = get_model_rotation(teapot_handle).y;
 
-    v2 delta = mouse_delta_position();
-    *latitude += delta.x * 0.05f;
-    *longitude -= delta.y * 0.05f;
+    v3 camera_position = get_camera_position();
+    v3 camera_looking = get_camera_looking_direction();
 
-    *longitude = clamp(*longitude, -179.99f, 0.0f);
+    v2 delta = v2();//mouse_delta_position();
+    float mouse_sensitivity = 0.1f;
+    camera_latitude += delta.x * mouse_sensitivity;
+    camera_longitude += delta.y * mouse_sensitivity;
+    camera_longitude = clamp(camera_longitude, -179.9f, -0.1f);
 
-
-    v3 looking = get_camera_to_target(1.0f, *latitude, *longitude);
-
-    
-
-    Model *teapot = get_temp_model_pointer(teapot_handle);
-    v3 *position = &teapot->position;
-
-    v3 forward;
-#if 0
-    forward = unit(looking);
-#else
-    forward = v3(looking.x, 0.0f, looking.z);
-    forward = unit(forward);
-#endif
-
-    v3 right_axis = cross(forward, WORLD_UP_VECTOR);
-    if(length(right_axis) == 0.0f) right_axis = v3(1.0f, 0.0f, 0.0f);
-    right_axis = unit(right_axis);
-
-    v3 up_axis = cross(right_axis, forward);
-    up_axis = unit(up_axis);
-
-    float speed = 0.001f;
-    if(key_state('W')) *position += forward * speed;
-    if(key_state('S')) *position -= forward * speed;
-    if(key_state('A')) *position -= right_axis * speed;
-    if(key_state('D')) *position += right_axis * speed;
-    if(key_state(' ')) *position += up_axis * speed;
-    if(key_state(VK_CONTROL)) *position -= up_axis * speed;
+    v3 camera_offset = spherical_to_cartesian(8.0f, camera_latitude, camera_longitude);
+    camera_position = player_position + camera_offset;
 
 
-    *cam_position = *position + v3(0.0f, 1.5f, 3.0f);
+    camera_looking = ((player_position + v3(0.0f, 1.0f, 0.0f) * 1.75f) - camera_position);
+    camera_looking = unit(camera_looking);
 
-    Model *hat = get_temp_model_pointer(hat_handle);
-    hat->position = *position + v3(0.0f, 0.55f, 0.0f);
+
+    {
+      v3 forward = v3(camera_looking.x, 0.0f, camera_looking.z);
+      forward = unit(forward);
+
+      v3 right_axis = cross(forward, v3(0.0f, 1.0f, 0.0f));
+      if(length(right_axis) == 0.0f) right_axis = v3(1.0f, 0.0f, 0.0f);
+      right_axis = unit(right_axis);
+
+      v3 up_axis = cross(right_axis, forward);
+      up_axis = unit(up_axis);
+
+      v3 direction = v3();
+      /*
+      if(key_state('W')) direction += forward;
+      if(key_state('S')) direction -= forward;
+      if(key_state('A')) direction -= right_axis;
+      if(key_state('D')) direction += right_axis;
+      if(key_state(' ')) direction += up_axis;
+      if(key_state(VK_CONTROL)) direction -= up_axis;
+      */
+
+      static v3 velocity;
+
+      float acceleration_speed = 0.0003f;
+      v3 acceleration = direction * acceleration_speed;
+      velocity += acceleration;
+
+
+      float deceleration_speed = 0.005f;
+      v3 deceleration = -velocity * deceleration_speed;
+      velocity += deceleration;
+
+
+      float max_speed = 0.05f;
+      velocity = clamp_length(velocity, max_speed);
+
+      player_position += velocity;
+
+
+      if(length(velocity) != 0.0f)
+      {
+        player_rotation = -rad_to_deg(atan2f(velocity.z, velocity.x));
+        set_model_rotation(hat_handle, v3(0.0f, -rad_to_deg(atan2f(velocity.z, velocity.x)) + 90.0f, 0.0f));
+      }
+      else
+      {
+        player_rotation = -rad_to_deg(atan2f(camera_looking.z, camera_looking.x));
+        set_model_rotation(hat_handle, v3(0.0f, -camera_latitude + 90.0f, 0.0f));
+      }
+
+
+      set_model_position(hat_handle, player_position + v3(0.0f, 0.6f, 0.0f));
+    }
+
+    set_camera_position(camera_position);
+    set_camera_looking_direction(camera_looking);
   }
-
-  
 }
 

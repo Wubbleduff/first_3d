@@ -1,9 +1,6 @@
 #pragma once
 
-#include "types.h"
-
 #include <math.h> // sqrt, cos, sin, atan2f
-#include <assert.h>
 
 static const float PI = 3.14159265f;
 
@@ -11,67 +8,27 @@ static const float PI = 3.14159265f;
 // common operations
 ///////////////////////////////////////////////////////////////////////////////
 
-static f32 squared(f32 a)
-{
-  return a * a;
-}
+static float squared(float a) { return a * a; }
 
-static s32 min(s32 a, s32 b)
-{
-  return (a < b) ? a : b; 
-}
-static s32 min(s32 a, s32 b, s32 c)
-{
-  return min(a, min(b, c)); 
-}
-static f32 min(f32 a, f32 b)
-{
-  return (a < b) ? a : b; 
-}
-static f32 min(f32 a, f32 b, f32 c)
-{
-  return min(a, min(b, c)); 
-}
+#if 0
+static int min(int a, int b) { return (a < b) ? a : b; }
+static int min(int a, int b, int c) { return min(a, min(b, c)); }
+static float min(float a, float b) { return (a < b) ? a : b; }
+static float min(float a, float b, float c) { return min(a, min(b, c)); }
 
-static s32 max(s32 a, s32 b)
-{
-  return (a > b) ? a : b; 
-}
-static s32 max(s32 a, s32 b, s32 c)
-{
-  return max(a, max(b, c)); 
-}
-static f32 max(f32 a, f32 b)
-{
-  return (a > b) ? a : b; 
-}
-static f32 max(f32 a, f32 b, f32 c)
-{
-  return max(a, max(b, c)); 
-}
+static int max(int a, int b) { return (a > b) ? a : b; }
+static int max(int a, int b, int c) { return max(a, max(b, c)); }
+static float max(float a, float b) { return (a > b) ? a : b; }
+static float max(float a, float b, float c) { return max(a, max(b, c)); }
+#endif
 
-static s32 clamp(s32 a, s32 min, s32 max)
-{
-  if(a < min) return min;
-  if(a > max) return max;
-  return a;
-}
-static f32 clamp(f32 a, f32 min, f32 max)
-{
-  if(a < min) return min;
-  if(a > max) return max;
-  return a;
-}
+static int clamp(int a, int min, int max) { if(a < min) return min; if(a > max) return max; return a; }
+static float clamp(float a, float min, float max) { if(a < min) return min; if(a > max) return max; return a; }
 
-static f32 absf(f32 a)
-{
-  return (a < 0.0f) ? -a : a;
-}
+static float absf(float a) { return (a < 0.0f) ? -a : a; } 
+static float deg_to_rad(float a) { return a * (PI / 180.0f); }
 
-static f32 deg_to_rad(f32 a)
-{
-  return a * (PI / 180.0f);
-}
+static float rad_to_deg(float a) { return a * (180.0f / PI); }
 
 
 
@@ -80,8 +37,8 @@ static f32 deg_to_rad(f32 a)
 ///////////////////////////////////////////////////////////////////////////////
 struct v2
 {
-  f32 x;
-  f32 y;
+  float x;
+  float y;
 
   // Default constructor
   v2() : x(0.0f), y(0.0f) { }
@@ -90,14 +47,14 @@ struct v2
   v2(const v2 &v) : x(v.x), y(v.y) { }
 
   // Non default constructor
-  v2(f32 in_x, f32 in_y) : x(in_x), y(in_y) { }
+  v2(float in_x, float in_y) : x(in_x), y(in_y) { }
 };
 
 struct v3
 {
-  f32 x;
-  f32 y;
-  f32 z;
+  float x;
+  float y;
+  float z;
 
   // Default constructor
   v3() : x(0.0f), y(0.0f), z(0.0f) { }
@@ -106,18 +63,18 @@ struct v3
   v3(const v3 &v) : x(v.x), y(v.y), z(v.z) { }
 
   // Non default constructor
-  v3(f32 in_x, f32 in_y, f32 in_z) : x(in_x), y(in_y), z(in_z) { }
+  v3(float in_x, float in_y, float in_z) : x(in_x), y(in_y), z(in_z) { }
 
-  v3(v2 v, f32 a) : x(v.x), y(v.y), z(a) { }
-  v3(f32 a, v2 v) : x(a),   y(v.x), z(v.y) { }
+  v3(v2 v, float a) : x(v.x), y(v.y), z(a) { }
+  v3(float a, v2 v) : x(a),   y(v.x), z(v.y) { }
 };
 
 struct v4
 {
-  f32 x;
-  f32 y;
-  f32 z;
-  f32 w;
+  float x;
+  float y;
+  float z;
+  float w;
 
   // Default constructor
   v4() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) { }
@@ -126,13 +83,13 @@ struct v4
   v4(const v4 &v) : x(v.x), y(v.y), z(v.z), w(v.w) { }
 
   // Non default constructor
-  v4(f32 in_x, f32 in_y, f32 in_z, f32 in_w) : x(in_x), y(in_y), z(in_z), w(in_w) { }
+  v4(float in_x, float in_y, float in_z, float in_w) : x(in_x), y(in_y), z(in_z), w(in_w) { }
 
-  v4(v2 v, f32 a, f32 b) : x(v.x), y(v.y), z(a),   w(b)   { }
-  v4(f32 a, v2 v, f32 b) : x(a),   y(v.x), z(v.y), w(b)   { }
-  v4(f32 a, f32 b, v2 v) : x(a),   y(b),   z(v.x), w(v.y) { }
-  v4(v3 v, f32 a) : x(v.x), y(v.y), z(v.z), w(a)   { }
-  v4(f32 a, v3 v) : x(a),   y(v.x), z(v.y), w(v.z) { }
+  v4(v2 v, float a, float b) : x(v.x), y(v.y), z(a),   w(b)   { }
+  v4(float a, v2 v, float b) : x(a),   y(v.x), z(v.y), w(b)   { }
+  v4(float a, float b, v2 v) : x(a),   y(b),   z(v.x), w(v.y) { }
+  v4(v3 v, float a) : x(v.x), y(v.y), z(v.z), w(a)   { }
+  v4(float a, v3 v) : x(a),   y(v.x), z(v.y), w(v.z) { }
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -153,23 +110,23 @@ static v3 operator-(v3 a) { return v3(-a.x, -a.y, -a.z); }
 static v4 operator-(v4 a) { return v4(-a.x, -a.y, -a.z, -a.w); }
 
 // Dot product
-static f32 operator*(v2 a, v2 b) { return (a.x * b.x) + (a.y * b.y); }
-static f32 operator*(v3 a, v3 b) { return (a.x * b.x) + (a.y * b.y) + (a.z * b.z); }
-static f32 operator*(v4 a, v4 b) { return (a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w); }
-static f32 dot(v2 a, v2 b) { return a * b; }
-static f32 dot(v3 a, v3 b) { return a * b; }
-static f32 dot(v4 a, v4 b) { return a * b; }
+static float operator*(v2 a, v2 b) { return (a.x * b.x) + (a.y * b.y); }
+static float operator*(v3 a, v3 b) { return (a.x * b.x) + (a.y * b.y) + (a.z * b.z); }
+static float operator*(v4 a, v4 b) { return (a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w); }
+static float dot(v2 a, v2 b) { return a * b; }
+static float dot(v3 a, v3 b) { return a * b; }
+static float dot(v4 a, v4 b) { return a * b; }
 
-static v2 operator*(v2 a, f32 scalar) { return v2(a.x * scalar, a.y * scalar); }
-static v3 operator*(v3 a, f32 scalar) { return v3(a.x * scalar, a.y * scalar, a.z * scalar); }
-static v4 operator*(v4 a, f32 scalar) { return v4(a.x * scalar, a.y * scalar, a.z * scalar, a.w * scalar); }
-static v2 operator*(f32 scalar, v2 a) { return v2(a.x * scalar, a.y * scalar); }
-static v3 operator*(f32 scalar, v3 a) { return v3(a.x * scalar, a.y * scalar, a.z * scalar); }
-static v4 operator*(f32 scalar, v4 a) { return v4(a.x * scalar, a.y * scalar, a.z * scalar, a.w * scalar); }
+static v2 operator*(v2 a, float scalar) { return v2(a.x * scalar, a.y * scalar); }
+static v3 operator*(v3 a, float scalar) { return v3(a.x * scalar, a.y * scalar, a.z * scalar); }
+static v4 operator*(v4 a, float scalar) { return v4(a.x * scalar, a.y * scalar, a.z * scalar, a.w * scalar); }
+static v2 operator*(float scalar, v2 a) { return v2(a.x * scalar, a.y * scalar); }
+static v3 operator*(float scalar, v3 a) { return v3(a.x * scalar, a.y * scalar, a.z * scalar); }
+static v4 operator*(float scalar, v4 a) { return v4(a.x * scalar, a.y * scalar, a.z * scalar, a.w * scalar); }
 
-static v2 operator/(v2 a, f32 scalar) { return v2(a.x / scalar, a.y / scalar); }
-static v3 operator/(v3 a, f32 scalar) { return v3(a.x / scalar, a.y / scalar, a.z / scalar); }
-static v4 operator/(v4 a, f32 scalar) { return v4(a.x / scalar, a.y / scalar, a.z / scalar, a.w / scalar); }
+static v2 operator/(v2 a, float scalar) { return v2(a.x / scalar, a.y / scalar); }
+static v3 operator/(v3 a, float scalar) { return v3(a.x / scalar, a.y / scalar, a.z / scalar); }
+static v4 operator/(v4 a, float scalar) { return v4(a.x / scalar, a.y / scalar, a.z / scalar, a.w / scalar); }
 
 static v2 &operator+=(v2 &a, v2 b) { a.x += b.x; a.y += b.y; return a; }
 static v3 &operator+=(v3 &a, v3 b) { a.x += b.x; a.y += b.y; a.z += b.z; return a; }
@@ -179,38 +136,38 @@ static v2 &operator-=(v2 &a, v2 b) { a.x -= b.x; a.y -= b.y; return a; }
 static v3 &operator-=(v3 &a, v3 b) { a.x -= b.x; a.y -= b.y; a.z -= b.z; return a; }
 static v4 &operator-=(v4 &a, v4 b) { a.x -= b.x; a.y -= b.y; a.z -= b.z; a.w -= b.w; return a; }
 
-static v2 &operator*=(v2 &a, f32 b) { a.x -= b; a.y -= b; return a; }
-static v3 &operator*=(v3 &a, f32 b) { a.x -= b; a.y -= b; a.z -= b; return a; }
-static v4 &operator*=(v4 &a, f32 b) { a.x -= b; a.y -= b; a.z -= b; a.w -= b; return a; }
+static v2 &operator*=(v2 &a, float b) { a.x -= b; a.y -= b; return a; }
+static v3 &operator*=(v3 &a, float b) { a.x -= b; a.y -= b; a.z -= b; return a; }
+static v4 &operator*=(v4 &a, float b) { a.x -= b; a.y -= b; a.z -= b; a.w -= b; return a; }
 
-static v2 &operator/=(v2 &a, f32 b) { a.x /= b; a.y /= b; return a; }
-static v3 &operator/=(v3 &a, f32 b) { a.x /= b; a.y /= b; a.z /= b; return a; }
-static v4 &operator/=(v4 &a, f32 b) { a.x /= b; a.y /= b; a.z /= b; a.w /= b; return a; }
+static v2 &operator/=(v2 &a, float b) { a.x /= b; a.y /= b; return a; }
+static v3 &operator/=(v3 &a, float b) { a.x /= b; a.y /= b; a.z /= b; return a; }
+static v4 &operator/=(v4 &a, float b) { a.x /= b; a.y /= b; a.z /= b; a.w /= b; return a; }
 
 // Gets the length of the vector
-static f32 length(v2 v)
+static float length(v2 v)
 {
-  return (f32)sqrt(squared(v.x) + squared(v.y));
+  return (float)sqrt(squared(v.x) + squared(v.y));
 }
-static f32 length(v3 v)
+static float length(v3 v)
 {
-  return (f32)sqrt(squared(v.x) + squared(v.y) + squared(v.z));
+  return (float)sqrt(squared(v.x) + squared(v.y) + squared(v.z));
 }
-static f32 length(v4 v)
+static float length(v4 v)
 {
-  return (f32)sqrt(squared(v.x) + squared(v.y) + squared(v.z) + squared(v.w));
+  return (float)sqrt(squared(v.x) + squared(v.y) + squared(v.z) + squared(v.w));
 }
 
 // Gets the squared length of this vector
-static f32 length_squared(v2 v)
+static float length_squared(v2 v)
 {
   return squared(v.x) + squared(v.y);
 }
-static f32 length_squared(v3 v)
+static float length_squared(v3 v)
 {
   return squared(v.x) + squared(v.y) + squared(v.z);
 }
-static f32 length_squared(v4 v)
+static float length_squared(v4 v)
 {
   return squared(v.x) + squared(v.y) + squared(v.z) + squared(v.w);
 }
@@ -230,9 +187,9 @@ static v4 unit(v4 v)
 }
 
 // Returns this vector clamped by max length
-static v2 clamp_length(v2 v, f32 max_length)
+static v2 clamp_length(v2 v, float max_length)
 {
-  f32 len = length(v);
+  float len = length(v);
   if(len > max_length)
   {
     v = v / len;
@@ -241,9 +198,9 @@ static v2 clamp_length(v2 v, f32 max_length)
 
   return v;
 }
-static v3 clamp_length(v3 v, f32 max_length)
+static v3 clamp_length(v3 v, float max_length)
 {
-  f32 len = length(v);
+  float len = length(v);
   if(len > max_length)
   {
     v = v / len;
@@ -252,9 +209,9 @@ static v3 clamp_length(v3 v, f32 max_length)
 
   return v;
 }
-static v4 clamp_length(v4 v, f32 max_length)
+static v4 clamp_length(v4 v, float max_length)
 {
-  f32 len = length(v);
+  float len = length(v);
   if(len > max_length)
   {
     v = v / len;
@@ -277,12 +234,12 @@ static v2 find_normal(v2 a)
 }
 
 // Returns this vector rotated by the angle in radians
-static v2 rotated(v2 a, f32 angle)
+static v2 rotated(v2 a, float angle)
 {
   v2 v;
 
-  v.x = a.x * (f32)cos(angle) - a.y * (f32)sin(angle);
-  v.y = a.x * (f32)sin(angle) + a.y * (f32)cos(angle);
+  v.x = a.x * (float)cos(angle) - a.y * (float)sin(angle);
+  v.y = a.x * (float)sin(angle) + a.y * (float)cos(angle);
 
   return v;
 }
@@ -295,7 +252,7 @@ static v2 rotated(v2 a, f32 angle)
 // PI <-- --> 0
 //       |
 //     -PI/2
-static f32 angle(v2 a)
+static float angle(v2 a)
 {
   return atan2f(a.y, a.x);
 }
@@ -326,7 +283,7 @@ static v3 cross(v3 a, v3 b)
 
 struct mat4
 {
-  f32 m[4][4];
+  float m[4][4];
 
   mat4() : m { {1.0f, 0.0f, 0.0f, 0.0f},
                {0.0f, 1.0f, 0.0f, 0.0f},
@@ -344,11 +301,11 @@ struct mat4
         {da, db, dc, dd} }
   {}
 
-  const f32 *operator[](u32 i) const
+  const float *operator[](unsigned i) const
   {
     return m[i];
   }
-  f32 *operator[](u32 i)
+  float *operator[](unsigned i)
   {
     return m[i];
   }
@@ -359,7 +316,7 @@ struct mat4
 ///////////////////////////////////////////////////////////////////////////////
 
 // This funciton was made only for the matrix-vector multiplication
-static f32 dot4v(const f32 *a, v4 b)
+static float dot4v(const float *a, v4 b)
 {
   return (a[0] * b.x) + (a[1] * b.y) + (a[2] * b.z) + (a[3] * b.w);
 }
@@ -380,13 +337,13 @@ static mat4 operator*(const mat4 &lhs, const mat4 &rhs)
   mat4 product;
 
   // Loop through each spot in the resulting matrix
-  for(u32 row = 0; row < 4; row++)
+  for(unsigned row = 0; row < 4; row++)
   {
-    for(u32 col = 0; col < 4; col++)
+    for(unsigned col = 0; col < 4; col++)
     {
       // Dot the row and column for the given slot
-      f32 dot = 0.0f;
-      for(u32 i = 0; i < 4; i++)
+      float dot = 0.0f;
+      for(unsigned i = 0; i < 4; i++)
       {
         dot += lhs.m[row][i] * rhs.m[i][col];
       }
@@ -424,41 +381,59 @@ static mat4 make_scale_matrix(v3 scale)
   return result;
 }
 
-static mat4 make_x_axis_rotation_matrix(f32 radians)
+static mat4 make_x_axis_rotation_matrix(float radians)
 {
   mat4 result = 
   {
     1.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, (f32)cos(radians), (f32)-sin(radians), 0.0f,
-    0.0f, (f32)sin(radians), (f32)cos(radians), 0.0f,
+    0.0f, (float)cos(radians), (float)-sin(radians), 0.0f,
+    0.0f, (float)sin(radians), (float)cos(radians), 0.0f,
     0.0f, 0.0f, 0.0f, 1.0f
   };
 
   return result;
 }
 
-static mat4 make_y_axis_rotation_matrix(f32 radians)
+static mat4 make_y_axis_rotation_matrix(float radians)
 {
   mat4 result = 
   {
-    (f32)cos(radians), 0.0f, (f32)sin(radians), 0.0f,
+    (float)cos(radians), 0.0f, (float)sin(radians), 0.0f,
     0.0f, 1.0f, 0.0f, 0.0f,
-    (f32)-sin(radians), 0.0f, (f32)cos(radians), 0.0f,
+    (float)-sin(radians), 0.0f, (float)cos(radians), 0.0f,
     0.0f, 0.0f, 0.0f, 1.0f
   };
 
   return result;
 }
 
-static mat4 make_z_axis_rotation_matrix(f32 radians)
+static mat4 make_z_axis_rotation_matrix(float radians)
 {
   mat4 result = 
   {
-    (f32)cos(radians), (f32)-sin(radians), 0.0f, 0.0f,
-    (f32)sin(radians), (f32)cos(radians), 0.0f, 0.0f,
+    (float)cos(radians), (float)-sin(radians), 0.0f, 0.0f,
+    (float)sin(radians), (float)cos(radians), 0.0f, 0.0f,
     0.0f, 0.0f, 1.0f, 0.0f,
     0.0f, 0.0f, 0.0f, 1.0f
   };
 
   return result;
 }
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// color
+///////////////////////////////////////////////////////////////////////////////
+
+struct Color
+{
+  float r, g, b, a;
+
+  Color(float r, float g, float b, float a) : r(r), g(g), b(b), a(a)    {}
+  Color(float r, float g, float b)          : r(r), g(g), b(b), a(1.0f) {}
+};
+

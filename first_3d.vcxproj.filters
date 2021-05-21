@@ -9,36 +9,42 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
+    <Filter Include="Source Files\platform_win">
+      <UniqueIdentifier>{9038090a-da98-495c-8135-3ef981ac4a32}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="source\main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="source\renderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="source\asset_loading.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="source\world.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\platform_win\asset_loading.cpp">
+      <Filter>Source Files\platform_win</Filter>
+    </ClCompile>
+    <ClCompile Include="source\platform_win\compiler_translation_unit.cpp">
+      <Filter>Source Files\platform_win</Filter>
+    </ClCompile>
+    <ClCompile Include="source\platform_win\main.cpp">
+      <Filter>Source Files\platform_win</Filter>
+    </ClCompile>
+    <ClCompile Include="source\platform_win\renderer.cpp">
+      <Filter>Source Files\platform_win</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="source\renderer.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="source\types.h">
+    <ClInclude Include="source\graphics.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="source\my_math.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="source\asset_loading.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="source\world.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\platform_win\asset_loading.h">
+      <Filter>Source Files\platform_win</Filter>
+    </ClInclude>
+    <ClInclude Include="source\platform_win\renderer.h">
+      <Filter>Source Files\platform_win</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

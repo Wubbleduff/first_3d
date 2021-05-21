@@ -1,30 +1,58 @@
 // FragShader.fs
 
 // Globals
-Texture2D shader_texture;
-SamplerState sample_type;
+Texture2D shader_texture : register(t0);
+Texture2D shadow_map : register(t1);
+
+SamplerState sample_type : register(s0);
+SamplerState shadow_sample : register(s1);
 
 // Typedef
 struct PSInput
 {
   float4 position : SV_POSITION;
+  float3 worldspace_position : WORLD_POSITION;
   float3 normal : NORMAL0;
   float2 tex : TEXCOORD0;
-  float4 color : COLOR; 
+  float4 blend_color : COLOR;
+  float3 worldspace_light_position : LIGHT_POSITION;
+  float4 light_clipspace_position : LIGHT_CLIP_POSITION;
 };
 
 // Pixel shader
-float4 ColorPixelShader(PSInput input) : SV_TARGET
+float4 diffuse_pixel_shader(PSInput input) : SV_TARGET
 {
   float4 final_color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+  final_color *= input.blend_color;
 
-  //texture_color = shader_texture.Sample(sample_type, input.tex);
 
-  //texture_color *= input.color;
+  float4 light_ndc_position = input.light_clipspace_position / input.light_clipspace_position.w;
+  float light_tex_x = (light_ndc_position.x / 2.0f) + 0.5f;
+  float light_tex_y = (-light_ndc_position.y / 2.0f) + 0.5f;
 
-  float3 light_position = float3(0.0f, 1.0f, 1.0f);
-  float intensity = dot(light_position, input.normal);
+  float camera_depth = light_ndc_position.z - 0.01f;
+  float light_depth = shadow_map.Sample(shadow_sample, float2(light_tex_x, light_tex_y)).r;
+
+
+  if(light_tex_x < 0.0f || light_tex_x > 1.0f ||
+     light_tex_y < 0.0f || light_tex_y > 1.0f)
+  {
+    //final_color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+  }
+  else
+  {
+    if(light_depth < camera_depth)
+    {
+      // In shadow
+      final_color.xyz *= 0.2f;
+    }
+  }
+
+  float3 light_vector = normalize(input.worldspace_light_position); // Directional light
+  //float3 light_vector = normalize(input.worldspace_light_position - input.worldspace_position);
+  float intensity = dot(light_vector, input.normal);
   final_color.xyz *= intensity;
 
   return final_color;
 }
+

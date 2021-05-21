@@ -9,3 +9,58 @@ wizard hat. Also implemented a first person camera.
 7/25/2019
 4 hours
 Cleaning up shader code and creating a second shader for a textured quad.
+
+7/26/2019
+3 hours
+Starting to create a rendering API to make it easy other for parts of the
+engine to create models from specified meshes. Creating a 3rd person camera to
+orbit the main character using spherical coordinates and a target in world
+space.
+
+7/29/2019
+4 hours
+Creating a terrain mesh and loading it into the scene. Having a large mesh
+showed a lighting bug I had. I didn't know what it was at first, so I allowed
+meshes to render their vertex normals as lines on screen to make sure the
+normals were facing the right direction. After seeing they were correct, I
+found the bug which was not normalizing the length of the vertex normals.
+
+7/30/2019
+3 hours
+Reading and learning about DirectX textures. I wanted to start learning how to
+do skyboxes and cube mapping in DirectX and came across lots of tutorials on
+how to use a library that loads .dds files and uses those for cube maps. I
+wasn't satisfied with this and learned how to create an array of 2D textures
+and bind them so the TextureCube sampling in the shaders would work. Had a
+weird bug where colors weren't interpolating correctly.
+
+8/1/2019
+4 hours
+Fixing the "interpolation" bug. Turns out it's interpolating correctly, I'm
+was just using an array of 1x1 textures for testing and each sample sampled a
+little of each texture. Turning off interpolating fixes that problem. Then I
+fixed a problem where my sampling vector was in view space when it should have
+been in model space. After all that, I'm now able to load and display a cube
+map texture in the background.
+(see skybox.png)
+
+8/2/2019
+2 hours
+Looking through tutorials and researching how to implement rendering to a
+texture in DirectX. I created a texture and bound a render target to a
+texture. Once I rendered a scene to that texture, I render the scene for real
+and display a quad in the top left corner of the screen with the rendered
+texture. This will now allow me to do many more complex things such as
+environment mapping, shadow mapping, post processing effects, etc.
+
+8/4/2019
+3 hours
+Rendering the quad to a screen and changing the light position in the game. In
+preparation for shadow mapping, I tried rendering the screen with increased
+field of view in order to reduce the number of depth maps needed to create a
+360 degree shadow map. This introduced a strange bug with my skybox (see
+8_4_2019_skybox_clipping_problem.png). I spent a while looking through my
+rendering calls and math with projection matrices. I finally discovered if I
+increase the size of the skybox geometry it gets fixed. This meant it was a
+clipping issue. I left my skybox cube larger and changed the bounds of the
+near and far plane and it was fixed. Now I'm ready to create shadow maps.
